@@ -225,6 +225,35 @@ function showKhoa() {
   });
 }
 
+function sortKhoaHocKeys(keys) {
+  function rank(name) {
+    const s = String(name)
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // bỏ dấu để bắt "CĐ" / "CD"
+      .replace(/\s+/g, "");
+
+    // CĐ9+K5 / CD9+K5 / CĐ9K5
+    let m = s.match(/CD9\+?K(\d+)/) || s.match(/CĐ9\+?K(\d+)/);
+    if (m) return 100 + Number(m[1]); // 105, 106, 107...
+
+    // CĐ K18 / CDK18 / K18
+    m = s.match(/CDK(\d+)/) || s.match(/[^A-Z]K(\d+)$/) || s.match(/^K(\d+)/);
+    if (m) return 200 + Number(m[1]); // 218, 219, 220...
+
+    // còn lại
+    m = s.match(/K(\d+)/);
+    if (m) return 300 + Number(m[1]);
+    return 900;
+  }
+
+  return [...keys].sort((a, b) => {
+    const d = rank(a) - rank(b);
+    if (d !== 0) return d;
+    return String(a).localeCompare(String(b), "vi");
+  });
+}
+
 function showKhoaHoc(khoa) {
   selected.khoa = khoa;
   selected.khoaHoc = null;
@@ -233,7 +262,14 @@ function showKhoaHoc(khoa) {
   updateStatus();
 
   document.getElementById("title").innerText = "Chọn khóa";
-  renderButtons(Object.keys(data[khoa]), khoaHoc => {
+
+  const raw = Object.keys(data[khoa] || {});
+  const keys = sortKhoaHocKeys(raw);
+
+  // Gỡ comment dòng dưới nếu muốn xem trên Console (F12) tên khóa thực tế
+  // console.log("Khóa raw:", raw, "→ sorted:", keys);
+
+  renderButtons(keys, khoaHoc => {
     history.push(() => showKhoaHoc(khoa));
     selected.khoaHoc = khoaHoc;
     updateStatus();
